@@ -28,12 +28,18 @@ Use /unsubscribe if you wish to stop receive the messages (pls dont 🥺)"""
 		self.prices : dict[str, Any]= {}
 
 	def run(self) -> None:
+		self.updater.dispatcher.add_handler(CommandHandler(['start', 'hello'], self.__start ))
 		self.updater.dispatcher.add_handler(CommandHandler('subscribe', self.__middleware_check_user ))
 		self.updater.dispatcher.add_handler(CommandHandler('unsubscribe', self.__middleware_check_user))
 		self.updater.dispatcher.add_handler(CommandHandler('prices', self.__middleware_check_user))
 
 		self.updater.start_polling(poll_interval=0.5)
 		self.updater.idle()
+	
+	def __start(self, update: Update, context: CallbackContext):
+		chat_id = update._effective_chat.id if update._effective_chat is not None else None
+		self.send_message(chat_id, self.__START_MSG) 
+
 
 	def __middleware_check_user(self, update: Update, context: CallbackContext):
 		username = update.effective_user.username if update.effective_user is not None else None
