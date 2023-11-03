@@ -19,6 +19,6 @@ class BaseScraper:
 		for url in self.urls:
 			logging.info(f"Scraping url '{url}'")
 			result = self.scrape(url)
-			prices[result["title"]] = {"url": url, "price": result["price"]}
+			prices[result["title"]] = {"url": url, "price": result["price"], "available": result["available"]}
 		
 		return prices

@@ -2,54 +2,41 @@ import os
 import logging
 import schedule
 import time
-from dotenv import load_dotenv 
-
+from environs import Env
 from telegram_bot import TelegramBot
 from scrapers.unieuro_scraper import UnieuroScraper
 
-load_dotenv()
+env = Env()
+env.read_env()
 
 # init logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
 # init bot
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+TELEGRAM_BOT_TOKEN = env('TELEGRAM_BOT_TOKEN')
 
-# init user whitelist
-USERS_WHITELIST = os.getenv('USERS_WHITELIST')
-users_whitelist = str(USERS_WHITELIST).split(',')
+# init users ACL
+USERS_WHITELIST = env.list('USERS_WHITELIST')
+USERS_ADMIN = env.list('USERS_ADMIN')
 
-UNIEURO_URLS = os.getenv('UNIEURO_URLS')
-unieuro_urls = str(UNIEURO_URLS).split(',')
+UNIEURO_URLS = env.list('UNIEURO_URLS')
 
-bot = TelegramBot(token=TELEGRAM_BOT_TOKEN, users_whitelist=users_whitelist)
+scrapers = []
+scrapers.append(UnieuroScraper(UNIEURO_URLS))
 
-unieuro_scraper = UnieuroScraper(unieuro_urls)
+bot = TelegramBot(token=TELEGRAM_BOT_TOKEN, users_whitelist=USERS_WHITELIST, users_admin=USERS_ADMIN, scrapers=scrapers)
 
-def scrape_all():
-    prices = unieuro_scraper.scrape_all()
-    bot.update_prices(prices)
+def update_prices():
+    bot.update_prices()
 
 def send_prices_to_subscriptions():
     bot.send_prices_to_subscriptions()
 
 def main():
-    # start scraping job
-    logging.info("Setting up scheduled jobs..")
-    schedule.every(1).hour.do(scrape_all)
-    schedule.every(1).day.at("07:00").do(scrape_all)
-
-    # do first scraping on start
-    logging.info("Performing initial scraping..")
-    scrape_all()
-    
     # start bot
     logging.info("Starting bot..")
     bot.run()
-    
-    while True:
-        schedule.run_pending()
-        time.sleep(0.1)
+
 if __name__ == '__main__':
     main()
