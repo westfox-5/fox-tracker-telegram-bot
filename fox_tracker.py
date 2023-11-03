@@ -37,10 +37,8 @@ def send_prices_to_subscriptions():
 def main():
     # start scraping job
     logging.info("Setting up scheduled jobs..")
-    for h in range(0, 23):
-        schedule.every().day.at(f"{'%02d'%h}:00").do(scrape_all)
-
-    schedule.every().day.at("09:00").do(send_prices_to_subscriptions)
+    schedule.every(1).hour.do(scrape_all)
+    schedule.every(1).day.at("07:00").do(scrape_all)
 
     # do first scraping on start
     logging.info("Performing initial scraping..")
@@ -49,6 +47,9 @@ def main():
     # start bot
     logging.info("Starting bot..")
     bot.run()
-
+    
+    while True:
+        schedule.run_pending()
+        time.sleep(0.1)
 if __name__ == '__main__':
     main()

@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 
-RUN apt update && apt install -y gcc 
+RUN pip install --upgrade setuptools
 RUN pip install -r requirements.txt
 
 COPY . .
