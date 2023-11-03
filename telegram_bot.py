@@ -49,9 +49,7 @@ Use /unsubscribe if you wish to stop receive the messages (pls dont 🥺)"""
 			self.send_message(chat_id, self.__USER_UNAUTHORIZED_MSG) 
 		else:
 			handler_name = f"_TelegramBot__{update.message.text[1::]}"
-			print(handler_name)
 			if hasattr(self, handler_name) and callable(func := getattr(self, handler_name)):
-				print(func)
 				func(update, context)
 
 	def __subscribe(self, update: Update, context: CallbackContext) -> None:
