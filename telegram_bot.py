@@ -75,7 +75,7 @@ Use /unsubscribe if you wish to stop receive the messages (pls dont 🥺)"""
 		username = update.effective_user.username if update.effective_user is not None else None
 		chat_id = update._effective_chat.id if update._effective_chat is not None else None
 		if username not in self.users_whitelist and username not in self.users_admin:
-			logging.error(f"UNAUTHORIZED for user {username}")
+			logging.error(f"UNAUTHORIZED for username {username}, chat_id {chat_id}")
 			self.send_message(chat_id, self.__USER_UNAUTHORIZED_MSG) 
 		else:
 			self.__call_method_internal(update, context)
@@ -84,7 +84,7 @@ Use /unsubscribe if you wish to stop receive the messages (pls dont 🥺)"""
 		username = update.effective_user.username if update.effective_user is not None else None
 		chat_id = update._effective_chat.id if update._effective_chat is not None else None
 		if username not in self.users_whitelist:
-			logging.error(f"UNAUTHORIZED for user {username}")
+			logging.error(f"UNAUTHORIZED for username {username}, chat_id {chat_id}")
 			self.send_message(chat_id, self.__USER_UNAUTHORIZED_MSG) 
 		else:
 			self.__call_method_internal(update, context)
@@ -94,7 +94,7 @@ Use /unsubscribe if you wish to stop receive the messages (pls dont 🥺)"""
 		username: str|None = str(update.effective_user.username) if update.effective_user is not None else None
 
 		if chat_id is not None and chat_id not in self.subscriptions: 
-			logging.info(f"SUBSCRIBE for user {username}")
+			logging.info(f"SUBSCRIBE for username {username}, chat_id {chat_id}")
 			self.subscriptions[chat_id] = True
 			self.send_message(chat_id, self.__USER_SUBSCRIBED_MSG) 
 	
@@ -103,7 +103,7 @@ Use /unsubscribe if you wish to stop receive the messages (pls dont 🥺)"""
 		username: str|None = str(update.effective_user.username) if update.effective_user is not None else None
 
 		if chat_id is not None and chat_id in self.subscriptions: 
-			logging.info(f"UNSUBSCRIBE for user {username}")
+			logging.info(f"UNSUBSCRIBE for user {username}, chat_id {chat_id}")
 			del self.subscriptions[chat_id]
 			self.send_message(chat_id, self.__USER_UNSUBSCRIBED_MSG) 
 
