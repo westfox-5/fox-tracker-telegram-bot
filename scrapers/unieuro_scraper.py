@@ -1,12 +1,11 @@
 import logging
 import requests
-from bs4 import BeautifulSoup, ResultSet
 from scrapers.base_scraper import BaseScraper
 
 class UnieuroScraper(BaseScraper):
-	__title_class =  "pdp-right__title"
-	__price_class =  "pdp-right__price"
-	__available_class = "product-availability"
+	__title_class: str =  "pdp-right__title"
+	__price_class: str =  "pdp-right__price"
+	__available_class: str = "product-availability"
 	
 	def __init__(self, urls: list[str]):
 		super().__init__(urls)
@@ -29,6 +28,6 @@ class UnieuroScraper(BaseScraper):
 			result["available"] = True if availableStr=="Disponibile" else False
 
 		else:
-			print(f"Errore nella richiesta HTTP: {response.status_code}")
+			logging.error(f"Errore nella richiesta HTTP: {response.status_code}")
 
 		return result

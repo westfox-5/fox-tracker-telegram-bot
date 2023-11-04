@@ -1,7 +1,4 @@
-import os
 import logging
-import schedule
-import time
 from environs import Env
 from telegram_bot import TelegramBot
 from scrapers.unieuro_scraper import UnieuroScraper

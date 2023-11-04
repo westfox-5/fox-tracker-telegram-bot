@@ -1,13 +1,14 @@
-import datetime
 import logging
 import threading
+import schedule
 import time
 from typing import Any
 import pytz
-import schedule
+from datetime import datetime, timedelta
 from telegram import Bot, Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 from scrapers.base_scraper import BaseScraper
+
 
 class TelegramBot:
 	__START_MSG = """👋Hi
@@ -24,13 +25,15 @@ Use /unsubscribe if you wish to stop receive the messages (pls dont 🥺)"""
 	Bye bye 👋"""
 	__UPDATING_PRICES_MSG = """⌛ Scraping in process.."""
 
+	__TIMEZONE = pytz.timezone('Europe/Rome')
+
 	def __init__(self, token: str, users_whitelist: list[str], users_admin: list[str], scrapers: list[BaseScraper]):
 		self.bot = Bot(token=token)
 		self.updater = Updater(bot=self.bot, use_context=True, workers=4)
 		self.users_whitelist: list[str] = users_whitelist
 		self.users_admin: list[str] = users_admin
 		self.subscriptions: dict[int, bool] = {}
-		self.prices_update_tms = None
+		self.prices_update: datetime | None  = None
 		self.prices : list[dict[str, Any]] = []
 		self.scrapers: list[BaseScraper] = scrapers
 
@@ -130,11 +133,12 @@ Use /unsubscribe if you wish to stop receive the messages (pls dont 🥺)"""
 		logging.info("Updating prices..")
 		prices = [ scraper.scrape_all() for scraper in self.scrapers]
 
-		self.prices_update_tms = datetime.datetime.now()
+		self.prices_update_tms = datetime.now(self.__TIMEZONE)
 		self.prices = prices
 
 	def get_prices_msg(self) -> str:
-		header = f"Prices update time: 🕑 {self.prices_update_tms.strftime('%H:%M:%S') if self.prices_update_tms is not None else '--' }\n"
+		diff = datetime.now(self.__TIMEZONE) - self.prices_update_tms
+		header = f"""📣 Last update: 🕑 { 'Today' if diff.days == 0 else 'Yesterday' if diff.days == 1 else self.prices_update_tms.strftime("%A").title()} at {self.prices_update_tms.strftime('%H:%M') if self.prices_update_tms is not None else '--' }\n"""
 
 		msg = "".join([ "\n".join([ 
 			f"""✨ {title} {"🟢" if price[title]['available'] else "🔴"}
