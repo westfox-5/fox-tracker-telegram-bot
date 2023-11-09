@@ -1,5 +1,5 @@
 import logging
-import requests
+import time
 from scrapers.base_scraper import BaseScraper
 
 class UnieuroScraper(BaseScraper):
@@ -7,27 +7,22 @@ class UnieuroScraper(BaseScraper):
 	__price_class: str =  "pdp-right__price"
 	__available_class: str = "product-availability"
 	
+	__available_str: str = "Disponibile"
+
 	def __init__(self, urls: list[str]):
-		super().__init__(urls)
+		super().__init__("Unieuro", urls)
 
-	def scrape(self, url: str):
-		result = {"title": "", "price": "", "available": False}
+	def do_scrape(self, text: str):
+		soup = BaseScraper.wrap(text)
 
-		response = requests.get(url)
-		if response.status_code == 200:
-			soup = BaseScraper.wrap(response.text)
+		titleElems = BaseScraper.wrap(soup.find_all(class_=self.__title_class)).find_all("span")
+		title = ''.join([BaseScraper.wrap(title).text for title in titleElems])
 
-			titleElems = BaseScraper.wrap(soup.find_all(class_=self.__title_class)).find_all("span")
-			result["title"] = ''.join([BaseScraper.wrap(title).text for title in titleElems])
+		priceElems = BaseScraper.wrap(soup.find_all(class_=self.__price_class)).find_all("span")
+		price = ''.join([BaseScraper.wrap(price).text for price in priceElems])
 
-			priceElems = BaseScraper.wrap(soup.find_all(class_=self.__price_class)).find_all("span")
-			result["price"] = ''.join([BaseScraper.wrap(price).text for price in priceElems])
+		availableElems = BaseScraper.wrap(soup.find_all(class_=self.__available_class)).find_all("span", class_="message")
+		availableStr = ''.join(set([BaseScraper.wrap(available).text for available in availableElems]))
+		available = True if availableStr==self.__available_str else False
 
-			availableElems = BaseScraper.wrap(soup.find_all(class_=self.__available_class)).find_all("span", class_="message")
-			availableStr = ''.join(set([BaseScraper.wrap(available).text for available in availableElems]))
-			result["available"] = True if availableStr=="Disponibile" else False
-
-		else:
-			logging.error(f"Errore nella richiesta HTTP: {response.status_code}")
-
-		return result
+		return title, price, available

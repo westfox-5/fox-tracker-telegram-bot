@@ -2,9 +2,8 @@ import logging
 import threading
 import schedule
 import time
-from typing import Any
 import pytz
-from datetime import datetime, timedelta
+from datetime import datetime
 from telegram import Bot, Update
 from telegram.ext import Updater, CommandHandler, CallbackContext
 from scrapers.base_scraper import BaseScraper
@@ -23,9 +22,8 @@ Use /unsubscribe if you wish to stop receive the messages (pls dont 🥺)"""
 	__USER_UNSUBSCRIBED_MSG = """😭 Seems like you are leaving th e. 
 	You can always hop back in using the /subscribe command.
 	Bye bye 👋"""
+	__USER_UNAUTHORIZED_ADMIN_MSG = "❌ Sorry, you're not allowed to perform this action!"
 	__UPDATING_PRICES_MSG = """⌛ Scraping in process.."""
-
-	__TIMEZONE = pytz.timezone('Europe/Rome')
 
 	def __init__(self, token: str, users_whitelist: list[str], users_admin: list[str], scrapers: list[BaseScraper]):
 		self.bot = Bot(token=token)
@@ -33,16 +31,17 @@ Use /unsubscribe if you wish to stop receive the messages (pls dont 🥺)"""
 		self.users_whitelist: list[str] = users_whitelist
 		self.users_admin: list[str] = users_admin
 		self.subscriptions: dict[int, bool] = {}
-		self.prices_update: datetime | None  = None
-		self.prices : list[dict[str, Any]] = []
+		
 		self.scrapers: list[BaseScraper] = scrapers
 
 	def run(self) -> None:
 		self.updater.dispatcher.add_handler(CommandHandler(['start'], self.__start ))
+		self.updater.dispatcher.add_handler(CommandHandler('update', self.__middleware_check_admin))
 		self.updater.dispatcher.add_handler(CommandHandler('subscribe', self.__middleware_check_user ))
 		self.updater.dispatcher.add_handler(CommandHandler('unsubscribe', self.__middleware_check_user))
 		self.updater.dispatcher.add_handler(CommandHandler('prices', self.__middleware_check_user))
-		self.updater.dispatcher.add_handler(CommandHandler('update', self.__middleware_check_admin))
+		self.updater.dispatcher.add_handler(CommandHandler('unieuro', self.__middleware_check_user))
+		self.updater.dispatcher.add_handler(CommandHandler('amazon', self.__middleware_check_user))
 
 		# do first scraping on start
 		logging.info("Performing initial scraping..")
@@ -79,7 +78,7 @@ Use /unsubscribe if you wish to stop receive the messages (pls dont 🥺)"""
 		chat_id = update._effective_chat.id if update._effective_chat is not None else None
 		if username not in self.users_whitelist and username not in self.users_admin:
 			logging.error(f"UNAUTHORIZED for username {username}, chat_id {chat_id}")
-			self.send_message(chat_id, self.__USER_UNAUTHORIZED_MSG) 
+			self.send_message(chat_id, self.__USER_UNAUTHORIZED_ADMIN_MSG) 
 		else:
 			self.__call_method_internal(update, context)
 
@@ -112,38 +111,30 @@ Use /unsubscribe if you wish to stop receive the messages (pls dont 🥺)"""
 
 	def __prices(self, update: Update, context: CallbackContext) -> None:
 		chat_id = update._effective_chat.id if update._effective_chat is not None else None
-		username: str|None = str(update.effective_user.username) if update.effective_user is not None else None
-
-		self.send_message(chat_id, self.get_prices_msg())
+		[ self.send_message(chat_id, scraper.get_prices_msg()) for scraper in self.scrapers ]
 
 	def __update(self, update: Update, context: CallbackContext) -> None:
 		chat_id = update._effective_chat.id if update._effective_chat is not None else None
 		self.send_message(chat_id, self.__UPDATING_PRICES_MSG)
 		self.update_prices()
-		self.send_message(chat_id, self.get_prices_msg())
+		[ self.send_message(chat_id, scraper.get_prices_msg()) for scraper in self.scrapers ]
+
+	def __amazon(self, update: Update, context: CallbackContext) -> None:
+		chat_id = update._effective_chat.id if update._effective_chat is not None else None
+		[ self.send_message(chat_id, scraper.get_prices_msg()) for scraper in self.scrapers if scraper.title == "Amazon" ]
+
+	def __unieuro(self, update: Update, context: CallbackContext) -> None:
+		chat_id = update._effective_chat.id if update._effective_chat is not None else None
+		[ self.send_message(chat_id, scraper.get_prices_msg()) for scraper in self.scrapers if scraper.title == "Unieuro" ]
 
 	def send_prices_to_subscriptions(self) -> None:
 		logging.info(f"Sending the price update message to {len(self.subscriptions)} chats")
-		[ self.send_message(chat_id, self.get_prices_msg()) for chat_id in self.subscriptions ]
+		[ [ self.send_message(chat_id, scraper.get_prices_msg()) for chat_id in self.subscriptions ] for scraper in self.scrapers ]
 
 	def send_message(self, chat_id, text) -> None:
 		self.bot.send_message(chat_id, text)
 
 	def update_prices(self):
 		logging.info("Updating prices..")
-		prices = [ scraper.scrape_all() for scraper in self.scrapers]
-
-		self.prices_update_tms = datetime.now(self.__TIMEZONE)
-		self.prices = prices
-
-	def get_prices_msg(self) -> str:
-		diff = datetime.now(self.__TIMEZONE) - self.prices_update_tms
-		header = f"""📣 Last update: 🕑 { 'Today' if diff.days == 0 else 'Yesterday' if diff.days == 1 else self.prices_update_tms.strftime("%A").title()} at {self.prices_update_tms.strftime('%H:%M') if self.prices_update_tms is not None else '--' }\n"""
-
-		msg = "".join([ "\n".join([ 
-			f"""✨ {title} {"🟢" if price[title]['available'] else "🔴"}
-			{price[title]['url']}
-			💸 {price[title]['price']}
-			""" 
-			for title in price.keys() ]) for price in self.prices])
-		return f"{header}\n{msg}"
+		[ scraper.scrape_all() for scraper in self.scrapers]
+	
